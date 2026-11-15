@@ -1307,6 +1307,272 @@
       padding: 2px;
     }
 
+    /* ================= ACCOUNT & CLOUD SYNC UI ================= */
+    .account-status-banner {
+      background: linear-gradient(135deg, rgba(var(--terra-rgb), 0.14) 0%, rgba(22, 22, 28, 0.95) 100%);
+      border: 1px solid rgba(var(--terra-rgb), 0.4);
+      border-radius: 22px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .account-banner-left {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .account-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: rgba(var(--terra-rgb), 0.2);
+      border: 1px solid rgba(var(--terra-rgb), 0.45);
+      color: var(--terra);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .account-banner-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .account-banner-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .account-banner-sub {
+      font-size: 11px;
+      color: var(--text-sec);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+      flex-shrink: 0;
+    }
+
+    .sync-dot.guest {
+      background: #eab308;
+      box-shadow: 0 0 6px #eab308;
+    }
+
+    .account-banner-btn {
+      background: var(--terra);
+      color: #08080a;
+      border: none;
+      border-radius: 12px;
+      padding: 8px 13px;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .account-banner-btn.secondary {
+      background: #1b1b22;
+      color: #e5e5ea;
+      border: 1px solid var(--border);
+    }
+
+    .auth-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      background: #16161c;
+      padding: 4px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    .auth-tab-btn {
+      background: none;
+      border: none;
+      border-radius: 10px;
+      padding: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-sec);
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .auth-tab-btn.active {
+      background: var(--terra);
+      color: #08080a;
+    }
+
+    .auth-form-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .auth-field {
+      width: 100%;
+      background: #18181f;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 11px 13px;
+      color: #ffffff;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+
+    .auth-field:focus {
+      border-color: var(--terra);
+    }
+
+    .auth-submit-btn {
+      width: 100%;
+      background: var(--terra);
+      color: #08080a;
+      border: none;
+      border-radius: 13px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--divider);
+    }
+
+    .auth-provider-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .auth-provider-btn {
+      width: 100%;
+      background: #18181f;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 10px 12px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: border-color 0.15s ease;
+    }
+
+    .auth-provider-btn:hover {
+      border-color: var(--terra);
+    }
+
+    .user-uid-box {
+      background: #16161c;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 11px;
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 10px;
+      word-break: break-all;
+      line-height: 1.35;
+    }
+
+    /* Quick Auth Modal for Wardrobe screen */
+    .auth-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.76);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 250;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .auth-modal-backdrop.open {
+      display: flex;
+    }
+
+    .auth-modal-card {
+      width: 100%;
+      max-width: 400px;
+      background: #14141a;
+      border: 1px solid var(--border);
+      border-radius: 26px;
+      padding: 20px 18px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .auth-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .auth-modal-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .auth-modal-close {
+      background: #1c1c24;
+      border: 1px solid var(--border);
+      color: var(--text-sec);
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
     .toast-msg {
       position: fixed;
       bottom: 84px;
@@ -1437,7 +1703,7 @@
       </div>
     </header>
 
-    <!-- Location Selector Pill (Always visible so user can switch city anywhere) -->
+    <!-- Location Selector Pill (Hidden in Settings) -->
     <div class="location-bar">
       <button class="location-pill" id="cycleCityBtn" title="Переключить город">
         <span class="loc-nav-icon">
@@ -1484,6 +1750,9 @@
 
     <!-- DEDICATED HANGER / WARDROBE SECTION VIEW -->
     <div id="wardrobeSectionView">
+      <!-- Cloud Account Sync Banner inside Wardrobe -->
+      <div id="wardrobeAccountBanner"></div>
+
       <!-- Dynamic Human Silhouette Card -->
       <div class="silhouette-card" id="silhouetteContainer"></div>
 
@@ -1529,8 +1798,11 @@
     <div id="settingsView">
       <div class="section-head">
         <h2 class="section-title">Настройки</h2>
-        <span class="section-badge">Персонализация</span>
+        <span class="section-badge">Персонализация и Облако</span>
       </div>
+
+      <!-- Account & Multi-Device Cloud Sync Card -->
+      <div class="settings-card" id="settingsAccountCard"></div>
 
       <!-- Accent Color Settings -->
       <div class="settings-card">
@@ -1595,6 +1867,17 @@
     <footer class="oxy-footer">
       <div class="oxy-footer-text">Powered by <strong>OXYstudio</strong></div>
     </footer>
+  </div>
+
+  <!-- Quick Auth Modal (accessible from Wardrobe banner) -->
+  <div class="auth-modal-backdrop" id="authModalBackdrop" onclick="closeAuthModal()">
+    <div class="auth-modal-card" onclick="event.stopPropagation()">
+      <div class="auth-modal-head">
+        <span class="auth-modal-title">Облачный аккаунт The Atmo</span>
+        <button type="button" class="auth-modal-close" onclick="closeAuthModal()">✕</button>
+      </div>
+      <div id="authModalBody"></div>
+    </div>
   </div>
 
   <div class="toast-msg" id="toastMsg">Сохранено!</div>
@@ -3028,13 +3311,638 @@
       render();
     });
 
+    // ================= MULTI-DEVICE ACCOUNT & CLOUD SYNC ENGINE =================
+    let currentAccount = null; // { key, label, email, provider, uid, isCloud }
+    let authMode = 'login'; // 'login' or 'register'
+    let cloudBridge = null; // Populated by Firebase module script
+
+    function sanitizeAccountKey(rawStr) {
+      return String(rawStr || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '_');
+    }
+
+    // Load or save account-isolated snapshot in local cache + push to cloud
+    function getLocalProfileCacheKey(accKey) {
+      return 'atmo_profile_cache_v3_' + accKey;
+    }
+
+    function applyProfilePayload(payload) {
+      if (!payload || typeof payload !== 'object') return;
+
+      if (payload.wardrobeByCategory) {
+        const w = typeof payload.wardrobeByCategory === 'string'
+          ? JSON.parse(payload.wardrobeByCategory)
+          : payload.wardrobeByCategory;
+        wardrobeByCategory = {
+          head: Array.isArray(w.head) ? w.head : [],
+          upper: Array.isArray(w.upper) ? w.upper : [],
+          lower: Array.isArray(w.lower) ? w.lower : [],
+          shoes: Array.isArray(w.shoes) ? w.shoes : []
+        };
+      } else {
+        wardrobeByCategory = { head: [], upper: [], lower: [], shoes: [] };
+      }
+
+      if (payload.outfitLogs) {
+        const l = typeof payload.outfitLogs === 'string'
+          ? JSON.parse(payload.outfitLogs)
+          : payload.outfitLogs;
+        outfitLogs = Array.isArray(l) ? l : [];
+      } else {
+        outfitLogs = [];
+      }
+
+      if (payload.favorites) {
+        const f = typeof payload.favorites === 'string'
+          ? JSON.parse(payload.favorites)
+          : payload.favorites;
+        if (Array.isArray(f) && f.length > 0) favorites = new Set(f);
+      }
+
+      if (payload.accentColor && typeof payload.accentColor === 'string') {
+        currentAccentColor = payload.accentColor;
+        const rgbStr = hexToRgbString(currentAccentColor);
+        document.documentElement.style.setProperty('--terra', currentAccentColor);
+        document.documentElement.style.setProperty('--terra-rgb', rgbStr);
+      }
+
+      render();
+    }
+
+    function buildCurrentProfilePayload() {
+      return {
+        wardrobeByCategory: JSON.stringify(wardrobeByCategory),
+        outfitLogs: JSON.stringify(outfitLogs),
+        favorites: JSON.stringify(Array.from(favorites)),
+        accentColor: currentAccentColor,
+        updatedAt: Date.now()
+      };
+    }
+
+    function syncUserDataEverywhere() {
+      // Save to current active account profile cache and cloud
+      if (currentAccount && currentAccount.key) {
+        const payload = buildCurrentProfilePayload();
+        try {
+          localStorage.setItem(getLocalProfileCacheKey(currentAccount.key), JSON.stringify(payload));
+        } catch (_) {}
+        if (cloudBridge && typeof cloudBridge.pushAccountData === 'function') {
+          cloudBridge.pushAccountData(currentAccount.key, payload);
+        }
+      }
+    }
+
+    // Hook existing save functions so every change immediately syncs to the user's cloud account
+    const _origSaveWardrobe = saveWardrobe;
+    saveWardrobe = function() {
+      _origSaveWardrobe();
+      syncUserDataEverywhere();
+    };
+
+    const _origSaveOutfitLogs = saveOutfitLogs;
+    saveOutfitLogs = function() {
+      _origSaveOutfitLogs();
+      syncUserDataEverywhere();
+    };
+
+    const _origSaveFavorites = saveFavorites;
+    saveFavorites = function() {
+      _origSaveFavorites();
+      syncUserDataEverywhere();
+    };
+
+    const _origApplyAccentColor = applyAccentColor;
+    applyAccentColor = function(hexColor) {
+      _origApplyAccentColor(hexColor);
+      syncUserDataEverywhere();
+    };
+
+    function setAuthMode(mode) {
+      authMode = mode;
+      renderAccountUI();
+    }
+
+    function openAuthModal() {
+      renderAccountUI();
+      document.getElementById('authModalBackdrop').classList.add('open');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModalBackdrop').classList.remove('open');
+    }
+
+    async function handleEmailPassSubmit(prefix) {
+      const emailEl = document.getElementById(prefix + '_email');
+      const passEl = document.getElementById(prefix + '_pass');
+      const email = (emailEl?.value || '').trim().toLowerCase();
+      const pass = (passEl?.value || '').trim();
+
+      if (!email || !email.includes('@')) {
+        showToast('Введите корректный Email');
+        return;
+      }
+      if (pass.length < 4) {
+        showToast('Пароль должен содержать минимум 4 символа');
+        return;
+      }
+
+      if (cloudBridge && typeof cloudBridge.authenticateAccount === 'function') {
+        await cloudBridge.authenticateAccount(email, pass, authMode);
+      }
+    }
+
+    async function handleGoogleLogin() {
+      if (cloudBridge && typeof cloudBridge.signInGoogleAccount === 'function') {
+        await cloudBridge.signInGoogleAccount();
+      }
+    }
+
+    async function handleTelegramQuickLogin() {
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      if (tgUser && tgUser.id) {
+        if (cloudBridge && typeof cloudBridge.signInTelegramAccount === 'function') {
+          await cloudBridge.signInTelegramAccount(tgUser);
+        }
+      } else {
+        showToast('Откройте приложение внутри Telegram или войдите по Email');
+      }
+    }
+
+    async function handleLogoutAccount() {
+      if (cloudBridge && typeof cloudBridge.logoutAccount === 'function') {
+        await cloudBridge.logoutAccount();
+      }
+    }
+
+    function buildAuthFormHtml(prefix) {
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      return `
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab-btn ${authMode === 'login' ? 'active' : ''}" onclick="setAuthMode('login')">Вход в аккаунт</button>
+          <button type="button" class="auth-tab-btn ${authMode === 'register' ? 'active' : ''}" onclick="setAuthMode('register')">Регистрация</button>
+        </div>
+        <div class="auth-form-stack">
+          <input type="email" id="${prefix}_email" class="auth-field" placeholder="Ваш Email (для синхронизации)" autocomplete="email" />
+          <input type="password" id="${prefix}_pass" class="auth-field" placeholder="Пароль (минимум 4 символа)" autocomplete="current-password" />
+          <button type="button" class="auth-submit-btn" onclick="handleEmailPassSubmit('${prefix}')">
+            ${authMode === 'register' ? 'Создать личный аккаунт' : 'Войти и загрузить данные'}
+          </button>
+        </div>
+        <div class="auth-divider">или быстрый вход</div>
+        <div class="auth-provider-row">
+          <button type="button" class="auth-provider-btn" onclick="handleGoogleLogin()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 15.65 5 12c0-3.65 3.36-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"/>
+            </svg>
+            <span>Войти через Google</span>
+          </button>
+          ${tgUser && tgUser.id ? `
+            <button type="button" class="auth-provider-btn" onclick="handleTelegramQuickLogin()">
+              <span>Войти как @${tgUser.username || tgUser.first_name || ('ID ' + tgUser.id)} (Telegram)</span>
+            </button>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function renderAccountUI() {
+      // 1. Banner on Wardrobe Screen
+      const bannerEl = document.getElementById('wardrobeAccountBanner');
+      if (bannerEl) {
+        if (currentAccount) {
+          const initial = (currentAccount.label || currentAccount.email || 'U').charAt(0).toUpperCase();
+          bannerEl.innerHTML = `
+            <div class="account-status-banner">
+              <div class="account-banner-left">
+                <div class="account-avatar">${initial}</div>
+                <div class="account-banner-info">
+                  <div class="account-banner-title">${currentAccount.label || currentAccount.email}</div>
+                  <div class="account-banner-sub">
+                    <span class="sync-dot"></span>
+                    <span>Синхронизировано в облаке (${outfitLogs.length} зап.)</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="account-banner-btn secondary" onclick="handleLogoutAccount()">Сменить</button>
+            </div>
+          `;
+        } else {
+          bannerEl.innerHTML = `
+            <div class="account-status-banner">
+              <div class="account-banner-left">
+                <div class="account-avatar">☁</div>
+                <div class="account-banner-info">
+                  <div class="account-banner-title">Гостевой режим (только это устройство)</div>
+                  <div class="account-banner-sub">
+                    <span class="sync-dot guest"></span>
+                    <span>Войдите, чтобы сохранять записи на всех устройствах</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="account-banner-btn" onclick="openAuthModal()">Войти</button>
+            </div>
+          `;
+        }
+      }
+
+      // 2. Card inside Settings Tab
+      const settingsCardEl = document.getElementById('settingsAccountCard');
+      if (settingsCardEl) {
+        if (currentAccount) {
+          const initial = (currentAccount.label || currentAccount.email || 'U').charAt(0).toUpperCase();
+          settingsCardEl.innerHTML = `
+            <div class="settings-card-title">Личный аккаунт · Облако</div>
+            <div class="settings-card-desc">
+              Ваш гардероб, история одежды и цвет интерфейса автоматически синхронизируются между всеми вашими устройствами.
+            </div>
+            <div class="account-status-banner" style="margin-bottom:10px;">
+              <div class="account-banner-left">
+                <div class="account-avatar">${initial}</div>
+                <div class="account-banner-info">
+                  <div class="account-banner-title">${currentAccount.label || currentAccount.email}</div>
+                  <div class="account-banner-sub">
+                    <span class="sync-dot"></span>
+                    <span>Синхронизация активна · Записей: ${outfitLogs.length}</span>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="account-banner-btn secondary" onclick="handleLogoutAccount()">Выйти</button>
+            </div>
+            <div class="user-uid-box">
+              ID пользователя: <strong>${currentAccount.uid || currentAccount.key}</strong>
+            </div>
+          `;
+        } else {
+          settingsCardEl.innerHTML = `
+            <div class="settings-card-title">Аккаунт и синхронизация</div>
+            <div class="settings-card-desc">
+              Создайте свой аккаунт или войдите, чтобы ваши вещи и записи о погоде были доступны с телефона, планшета или компьютера. У каждого пользователя — свой отдельный гардероб.
+            </div>
+            ${buildAuthFormHtml('settings_auth')}
+          `;
+        }
+      }
+
+      // 3. Modal Body if open
+      const modalBodyEl = document.getElementById('authModalBody');
+      if (modalBodyEl) {
+        modalBodyEl.innerHTML = buildAuthFormHtml('modal_auth');
+      }
+    }
+
+    // Hook renderWardrobeSection & renderSettingsTab so Account UI always stays updated
+    const _origRenderWardrobeSection = renderWardrobeSection;
+    renderWardrobeSection = function() {
+      renderAccountUI();
+      _origRenderWardrobeSection();
+    };
+
+    const _origRenderSettingsTab = renderSettingsTab;
+    renderSettingsTab = function() {
+      renderAccountUI();
+      _origRenderSettingsTab();
+    };
+
     initInstantData();
     applyAccentColor(currentAccentColor);
+    renderAccountUI();
     tickCountdowns();
 
     setInterval(tickCountdowns, 1000);
     setInterval(loadAllWeather, 15 * 60 * 1000);
     loadAllWeather();
+  </script>
+
+  <!-- Firebase Auth & Firestore Multi-Device Synchronization Module -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      signInWithCustomToken,
+      onAuthStateChanged,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'the-atmo-weather-app';
+    let db = null;
+    let auth = null;
+    let firebaseUser = null;
+    let unsubscribeProfileSnapshot = null;
+
+    // Simple deterministic hash for password verification in shared cloud profile docs
+    async function sha256Hex(text) {
+      const msgBuffer = new TextEncoder().encode(text);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function getAccountDocRef(accKey) {
+      // RULE 1 Strict Path: /artifacts/{appId}/public/data/atmo_accounts/{accKey}
+      return doc(db, 'artifacts', appId, 'public', 'data', 'atmo_accounts', accKey);
+    }
+
+    function subscribeToCloudAccount(accKey) {
+      if (unsubscribeProfileSnapshot) {
+        unsubscribeProfileSnapshot();
+        unsubscribeProfileSnapshot = null;
+      }
+      if (!db || !firebaseUser || !accKey) return;
+
+      const ref = getAccountDocRef(accKey);
+      unsubscribeProfileSnapshot = onSnapshot(
+        ref,
+        (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            applyProfilePayload(data);
+            try {
+              localStorage.setItem(getLocalProfileCacheKey(accKey), JSON.stringify(data));
+            } catch (_) {}
+          }
+        },
+        (err) => {
+          console.warn('Cloud sync listener warning:', err);
+        }
+      );
+    }
+
+    async function pushAccountData(accKey, payload) {
+      if (!db || !firebaseUser || !accKey) return;
+      try {
+        const ref = getAccountDocRef(accKey);
+        await setDoc(ref, {
+          ...payload,
+          ownerUid: firebaseUser.uid,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Cloud push error:', err);
+      }
+    }
+
+    async function activateUserSession(accountObj, initialData) {
+      currentAccount = accountObj;
+      try {
+        localStorage.setItem('atmo_active_account_v3', JSON.stringify(accountObj));
+      } catch (_) {}
+
+      if (initialData) {
+        applyProfilePayload(initialData);
+      } else {
+        // Check local cache for this account first
+        try {
+          const cached = localStorage.getItem(getLocalProfileCacheKey(accountObj.key));
+          if (cached) applyProfilePayload(JSON.parse(cached));
+        } catch (_) {}
+      }
+
+      subscribeToCloudAccount(accountObj.key);
+      closeAuthModal();
+      renderAccountUI();
+      render();
+    }
+
+    async function authenticateAccount(email, password, mode) {
+      const accKey = 'acct_' + sanitizeAccountKey(email);
+      const passHash = await sha256Hex(email + '::' + password);
+
+      if (db && firebaseUser) {
+        try {
+          const ref = getAccountDocRef(accKey);
+          const snap = await getDoc(ref);
+
+          if (mode === 'register') {
+            if (snap.exists() && snap.data().passHash && snap.data().passHash !== passHash) {
+              showToast('Этот Email уже зарегистрирован. Переключитесь на «Вход».');
+              setAuthMode('login');
+              return;
+            }
+            const initialPayload = buildCurrentProfilePayload();
+            const fullDoc = {
+              ...initialPayload,
+              email,
+              passHash,
+              ownerUid: firebaseUser.uid,
+              createdAt: Date.now()
+            };
+            await setDoc(ref, fullDoc, { merge: true });
+            await activateUserSession({
+              key: accKey,
+              email,
+              label: email,
+              uid: firebaseUser.uid,
+              provider: 'email'
+            }, fullDoc);
+            showToast('Аккаунт создан и синхронизирован в облаке!');
+            return;
+          } else {
+            // Login mode
+            if (!snap.exists()) {
+              showToast('Аккаунт не найден. Нажмите «Регистрация», чтобы создать.');
+              setAuthMode('register');
+              return;
+            }
+            const cloudData = snap.data();
+            if (cloudData.passHash && cloudData.passHash !== passHash) {
+              showToast('Неверный пароль для этого аккаунта');
+              return;
+            }
+            await activateUserSession({
+              key: accKey,
+              email,
+              label: email,
+              uid: firebaseUser.uid,
+              provider: 'email'
+            }, cloudData);
+            showToast('Вход выполнен! Ваши записи загружены из облака.');
+            return;
+          }
+        } catch (err) {
+          console.warn('Cloud auth error, using local fallback:', err);
+        }
+      }
+
+      // Offline / local fallback if Firebase config is not present
+      const cachedRaw = localStorage.getItem(getLocalProfileCacheKey(accKey));
+      if (mode === 'login' && cachedRaw) {
+        const cachedData = JSON.parse(cachedRaw);
+        if (cachedData.passHash && cachedData.passHash !== passHash) {
+          showToast('Неверный пароль');
+          return;
+        }
+        await activateUserSession({ key: accKey, email, label: email, uid: accKey, provider: 'email' }, cachedData);
+        showToast('Вход выполнен!');
+      } else {
+        const payload = { ...buildCurrentProfilePayload(), email, passHash };
+        localStorage.setItem(getLocalProfileCacheKey(accKey), JSON.stringify(payload));
+        await activateUserSession({ key: accKey, email, label: email, uid: accKey, provider: 'email' }, payload);
+        showToast('Аккаунт сохранён!');
+      }
+    }
+
+    async function signInGoogleAccount() {
+      if (auth) {
+        try {
+          const provider = new GoogleAuthProvider();
+          const res = await signInWithPopup(auth, provider);
+          if (res && res.user) {
+            firebaseUser = res.user;
+            const email = res.user.email || ('google_' + res.user.uid);
+            const accKey = 'google_' + sanitizeAccountKey(email);
+            let cloudData = null;
+            if (db) {
+              const snap = await getDoc(getAccountDocRef(accKey));
+              if (snap.exists()) {
+                cloudData = snap.data();
+              } else {
+                cloudData = buildCurrentProfilePayload();
+                await setDoc(getAccountDocRef(accKey), { ...cloudData, email, ownerUid: res.user.uid }, { merge: true });
+              }
+            }
+            await activateUserSession({
+              key: accKey,
+              email,
+              label: res.user.displayName || email,
+              uid: res.user.uid,
+              provider: 'google'
+            }, cloudData);
+            showToast('Вход через Google выполнен!');
+            return;
+          }
+        } catch (err) {
+          showToast('Вход через всплывающее окно недоступен в этом окне, используйте Email и пароль');
+        }
+      } else {
+        showToast('Используйте вход по Email и паролю');
+      }
+    }
+
+    async function signInTelegramAccount(tgUser) {
+      if (!tgUser || !tgUser.id) return;
+      const accKey = 'tg_' + sanitizeAccountKey(tgUser.id);
+      const label = tgUser.username ? ('@' + tgUser.username) : (tgUser.first_name || ('Telegram #' + tgUser.id));
+      let cloudData = null;
+      if (db && firebaseUser) {
+        try {
+          const snap = await getDoc(getAccountDocRef(accKey));
+          if (snap.exists()) {
+            cloudData = snap.data();
+          } else {
+            cloudData = buildCurrentProfilePayload();
+            await setDoc(getAccountDocRef(accKey), { ...cloudData, label, ownerUid: firebaseUser.uid }, { merge: true });
+          }
+        } catch (_) {}
+      }
+      await activateUserSession({
+        key: accKey,
+        email: label,
+        label,
+        uid: firebaseUser?.uid || accKey,
+        provider: 'telegram'
+      }, cloudData);
+      showToast('Синхронизация с аккаунтом Telegram включена!');
+    }
+
+    async function logoutAccount() {
+      if (unsubscribeProfileSnapshot) {
+        unsubscribeProfileSnapshot();
+        unsubscribeProfileSnapshot = null;
+      }
+      currentAccount = null;
+      try {
+        localStorage.removeItem('atmo_active_account_v3');
+      } catch (_) {}
+
+      // Reset to clean state for guest so previous user's private wardrobe isn't left behind
+      wardrobeByCategory = { head: [], upper: [], lower: [], shoes: [] };
+      outfitLogs = [];
+      draftTodayOutfit = { head: '', upper: '', lower: '', shoes: '' };
+
+      renderAccountUI();
+      render();
+      showToast('Вы вышли из аккаунта');
+    }
+
+    // Expose cloud bridge to main application script
+    cloudBridge = {
+      pushAccountData,
+      authenticateAccount,
+      signInGoogleAccount,
+      signInTelegramAccount,
+      logoutAccount
+    };
+
+    async function initFirebaseCloud() {
+      try {
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          const firebaseConfig = JSON.parse(__firebase_config);
+          const app = initializeApp(firebaseConfig);
+          auth = getAuth(app);
+          db = getFirestore(app);
+
+          // RULE 3: Auth Before Queries
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await signInWithCustomToken(auth, __initial_auth_token);
+          } else {
+            await signInAnonymously(auth);
+          }
+
+          onAuthStateChanged(auth, async (user) => {
+            firebaseUser = user;
+            if (!user) return;
+
+            // Restore previously logged-in account on this device or auto-link Telegram user
+            try {
+              const savedAccRaw = localStorage.getItem('atmo_active_account_v3');
+              if (savedAccRaw) {
+                const savedAcc = JSON.parse(savedAccRaw);
+                if (savedAcc && savedAcc.key) {
+                  const snap = await getDoc(getAccountDocRef(savedAcc.key));
+                  await activateUserSession(
+                    { ...savedAcc, uid: user.uid },
+                    snap.exists() ? snap.data() : null
+                  );
+                  return;
+                }
+              }
+            } catch (_) {}
+
+            const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+            if (tgUser && tgUser.id) {
+              await signInTelegramAccount(tgUser);
+            }
+          });
+        } else {
+          // Restore local account session if offline
+          const savedAccRaw = localStorage.getItem('atmo_active_account_v3');
+          if (savedAccRaw) {
+            const savedAcc = JSON.parse(savedAccRaw);
+            if (savedAcc && savedAcc.key) {
+              await activateUserSession(savedAcc, null);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Cloud init fallback:', e);
+      }
+    }
+
+    initFirebaseCloud();
   </script>
 </body>
 </html>
