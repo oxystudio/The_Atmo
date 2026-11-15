@@ -1521,6 +1521,40 @@
       line-height: 1.35;
     }
 
+    .sync-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .sync-action-btn {
+      flex: 1;
+      background: #18181f;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 9px 12px;
+      color: #e5e5ea;
+      font-size: 12px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: border-color 0.15s ease, transform 0.12s ease;
+    }
+
+    .sync-action-btn:active {
+      transform: scale(0.98);
+    }
+
+    .sync-action-btn.primary {
+      border-color: rgba(var(--terra-rgb), 0.5);
+      background: rgba(var(--terra-rgb), 0.12);
+      color: #ffffff;
+    }
+
     /* Quick Auth Modal for Wardrobe screen */
     .auth-modal-backdrop {
       position: fixed;
@@ -3270,7 +3304,7 @@
       const nowDate = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
       outfitLogs.push({
-        id: 'log_' + Date.now(),
+        id: 'log_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
         timestamp: Date.now(),
         cityId: activeCity.id,
         cityName: activeCity.name,
@@ -3290,7 +3324,7 @@
 
       saveOutfitLogs();
       renderWardrobeSection();
-      showToast('Запись сохранена! Силуэт и правая колонка обновлены.');
+      showToast('Запись сохранена и отправлена в облако!');
     });
 
     // Search Bar
@@ -3312,9 +3346,26 @@
     });
 
     // ================= MULTI-DEVICE ACCOUNT & CLOUD SYNC ENGINE =================
-    let currentAccount = null; // { key, label, email, provider, uid, isCloud }
+    let currentAccount = null; // { key, cloudDocId, label, email, provider, uid }
     let authMode = 'login'; // 'login' or 'register'
     let cloudBridge = null; // Populated by Firebase module script
+    let cloudSyncStatusText = 'Ожидание подключения...';
+    let isCloudConnected = false;
+    let deletedTombstones = new Set(); // Prevents deleted items from re-appearing during merge
+
+    try {
+      const savedTombs = localStorage.getItem('atmo_deleted_tombstones_v3');
+      if (savedTombs) {
+        const parsedT = JSON.parse(savedTombs);
+        if (Array.isArray(parsedT)) deletedTombstones = new Set(parsedT);
+      }
+    } catch (_) {}
+
+    function saveTombstones() {
+      try {
+        localStorage.setItem('atmo_deleted_tombstones_v3', JSON.stringify(Array.from(deletedTombstones)));
+      } catch (_) {}
+    }
 
     function sanitizeAccountKey(rawStr) {
       return String(rawStr || '')
@@ -3323,41 +3374,91 @@
         .replace(/[^a-z0-9_-]/g, '_');
     }
 
-    // Load or save account-isolated snapshot in local cache + push to cloud
     function getLocalProfileCacheKey(accKey) {
       return 'atmo_profile_cache_v3_' + accKey;
     }
 
-    function applyProfilePayload(payload) {
+    function parseSafeJson(val, fallback) {
+      if (!val) return fallback;
+      if (typeof val === 'object') return val;
+      try {
+        return JSON.parse(val);
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    // Smart non-destructive merge between Cloud and Local data
+    function mergeCloudAndLocalPayloads(cloudRaw, localRaw) {
+      const cTomb = parseSafeJson(cloudRaw?.deletedIds, []);
+      cTomb.forEach(id => deletedTombstones.add(id));
+      saveTombstones();
+
+      const cW = parseSafeJson(cloudRaw?.wardrobeByCategory, { head: [], upper: [], lower: [], shoes: [] });
+      const lW = parseSafeJson(localRaw?.wardrobeByCategory, { head: [], upper: [], lower: [], shoes: [] });
+
+      const mergedWardrobe = { head: [], upper: [], lower: [], shoes: [] };
+      ['head', 'upper', 'lower', 'shoes'].forEach(cat => {
+        const set = new Set([...(Array.isArray(cW[cat]) ? cW[cat] : []), ...(Array.isArray(lW[cat]) ? lW[cat] : [])]);
+        mergedWardrobe[cat] = Array.from(set).filter(item => !deletedTombstones.has('w_' + cat + '_' + item));
+      });
+
+      const cLogs = parseSafeJson(cloudRaw?.outfitLogs, []);
+      const lLogs = parseSafeJson(localRaw?.outfitLogs, []);
+      const logsMap = new Map();
+      [...(Array.isArray(cLogs) ? cLogs : []), ...(Array.isArray(lLogs) ? lLogs : [])].forEach(item => {
+        if (item && item.id && !deletedTombstones.has(item.id)) {
+          logsMap.set(item.id, item);
+        }
+      });
+      const mergedLogs = Array.from(logsMap.values()).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+      const cFavs = parseSafeJson(cloudRaw?.favorites, ['moscow', 'izhevsk']);
+      const lFavs = parseSafeJson(localRaw?.favorites, ['moscow', 'izhevsk']);
+      const mergedFavs = Array.from(new Set([...(Array.isArray(cFavs) ? cFavs : []), ...(Array.isArray(lFavs) ? lFavs : [])]));
+
+      const cloudTime = cloudRaw?.updatedAt || 0;
+      const localTime = localRaw?.updatedAt || 0;
+      const resolvedColor = (cloudTime >= localTime && cloudRaw?.accentColor)
+        ? cloudRaw.accentColor
+        : (localRaw?.accentColor || cloudRaw?.accentColor || currentAccentColor);
+
+      return {
+        wardrobeByCategory: mergedWardrobe,
+        outfitLogs: mergedLogs,
+        favorites: mergedFavs.length > 0 ? mergedFavs : ['moscow', 'izhevsk'],
+        accentColor: resolvedColor,
+        deletedIds: Array.from(deletedTombstones),
+        updatedAt: Math.max(cloudTime, localTime, Date.now())
+      };
+    }
+
+    function applyProfilePayload(payload, shouldPersistLocal = true) {
       if (!payload || typeof payload !== 'object') return;
 
+      const cTomb = parseSafeJson(payload.deletedIds, []);
+      if (Array.isArray(cTomb)) {
+        cTomb.forEach(id => deletedTombstones.add(id));
+        saveTombstones();
+      }
+
       if (payload.wardrobeByCategory) {
-        const w = typeof payload.wardrobeByCategory === 'string'
-          ? JSON.parse(payload.wardrobeByCategory)
-          : payload.wardrobeByCategory;
+        const w = parseSafeJson(payload.wardrobeByCategory, { head: [], upper: [], lower: [], shoes: [] });
         wardrobeByCategory = {
-          head: Array.isArray(w.head) ? w.head : [],
-          upper: Array.isArray(w.upper) ? w.upper : [],
-          lower: Array.isArray(w.lower) ? w.lower : [],
-          shoes: Array.isArray(w.shoes) ? w.shoes : []
+          head: (Array.isArray(w.head) ? w.head : []).filter(i => !deletedTombstones.has('w_head_' + i)),
+          upper: (Array.isArray(w.upper) ? w.upper : []).filter(i => !deletedTombstones.has('w_upper_' + i)),
+          lower: (Array.isArray(w.lower) ? w.lower : []).filter(i => !deletedTombstones.has('w_lower_' + i)),
+          shoes: (Array.isArray(w.shoes) ? w.shoes : []).filter(i => !deletedTombstones.has('w_shoes_' + i))
         };
-      } else {
-        wardrobeByCategory = { head: [], upper: [], lower: [], shoes: [] };
       }
 
       if (payload.outfitLogs) {
-        const l = typeof payload.outfitLogs === 'string'
-          ? JSON.parse(payload.outfitLogs)
-          : payload.outfitLogs;
-        outfitLogs = Array.isArray(l) ? l : [];
-      } else {
-        outfitLogs = [];
+        const l = parseSafeJson(payload.outfitLogs, []);
+        outfitLogs = (Array.isArray(l) ? l : []).filter(item => item && item.id && !deletedTombstones.has(item.id));
       }
 
       if (payload.favorites) {
-        const f = typeof payload.favorites === 'string'
-          ? JSON.parse(payload.favorites)
-          : payload.favorites;
+        const f = parseSafeJson(payload.favorites, ['moscow', 'izhevsk']);
         if (Array.isArray(f) && f.length > 0) favorites = new Set(f);
       }
 
@@ -3368,6 +3469,16 @@
         document.documentElement.style.setProperty('--terra-rgb', rgbStr);
       }
 
+      if (shouldPersistLocal) {
+        _origSaveWardrobe();
+        _origSaveOutfitLogs();
+        _origSaveFavorites();
+        try {
+          localStorage.setItem('atmo_accent_color', currentAccentColor);
+        } catch (_) {}
+      }
+
+      renderAccountUI();
       render();
     }
 
@@ -3376,23 +3487,47 @@
         wardrobeByCategory: JSON.stringify(wardrobeByCategory),
         outfitLogs: JSON.stringify(outfitLogs),
         favorites: JSON.stringify(Array.from(favorites)),
+        deletedIds: JSON.stringify(Array.from(deletedTombstones)),
         accentColor: currentAccentColor,
         updatedAt: Date.now()
       };
     }
 
-    function syncUserDataEverywhere() {
-      // Save to current active account profile cache and cloud
-      if (currentAccount && currentAccount.key) {
+    async function syncUserDataEverywhere() {
+      if (currentAccount && currentAccount.cloudDocId) {
         const payload = buildCurrentProfilePayload();
         try {
-          localStorage.setItem(getLocalProfileCacheKey(currentAccount.key), JSON.stringify(payload));
+          localStorage.setItem(getLocalProfileCacheKey(currentAccount.cloudDocId), JSON.stringify(payload));
         } catch (_) {}
         if (cloudBridge && typeof cloudBridge.pushAccountData === 'function') {
-          cloudBridge.pushAccountData(currentAccount.key, payload);
+          await cloudBridge.pushAccountData(currentAccount.cloudDocId, payload);
         }
       }
     }
+
+    // Track deletions with tombstones so deleted items don't resurrect on merge
+    removeWardrobeItem = function(catKey, idx) {
+      if (!wardrobeByCategory[catKey]) return;
+      const itemVal = wardrobeByCategory[catKey][idx];
+      if (itemVal) {
+        deletedTombstones.add('w_' + catKey + '_' + itemVal);
+        saveTombstones();
+      }
+      wardrobeByCategory[catKey].splice(idx, 1);
+      saveWardrobe();
+      renderSettingsTab();
+    };
+
+    deleteOutfitLog = function(id) {
+      if (id) {
+        deletedTombstones.add(id);
+        saveTombstones();
+      }
+      outfitLogs = outfitLogs.filter(item => item.id !== id);
+      saveOutfitLogs();
+      renderSettingsTab();
+      render();
+    };
 
     // Hook existing save functions so every change immediately syncs to the user's cloud account
     const _origSaveWardrobe = saveWardrobe;
@@ -3453,9 +3588,13 @@
       }
     }
 
-    async function handleGoogleLogin() {
-      if (cloudBridge && typeof cloudBridge.signInGoogleAccount === 'function') {
-        await cloudBridge.signInGoogleAccount();
+    async function handleManualCloudSync() {
+      if (!currentAccount || !currentAccount.cloudDocId) {
+        showToast('Сначала войдите в аккаунт');
+        return;
+      }
+      if (cloudBridge && typeof cloudBridge.forceSyncNow === 'function') {
+        await cloudBridge.forceSyncNow(currentAccount.cloudDocId);
       }
     }
 
@@ -3484,30 +3623,30 @@
           <button type="button" class="auth-tab-btn ${authMode === 'register' ? 'active' : ''}" onclick="setAuthMode('register')">Регистрация</button>
         </div>
         <div class="auth-form-stack">
-          <input type="email" id="${prefix}_email" class="auth-field" placeholder="Ваш Email (для синхронизации)" autocomplete="email" />
+          <input type="email" id="${prefix}_email" class="auth-field" placeholder="Ваш Email (одинаковый на всех устройствах)" autocomplete="email" />
           <input type="password" id="${prefix}_pass" class="auth-field" placeholder="Пароль (минимум 4 символа)" autocomplete="current-password" />
           <button type="button" class="auth-submit-btn" onclick="handleEmailPassSubmit('${prefix}')">
-            ${authMode === 'register' ? 'Создать личный аккаунт' : 'Войти и загрузить данные'}
+            ${authMode === 'register' ? 'Создать облачный аккаунт' : 'Войти и синхронизировать'}
           </button>
         </div>
-        <div class="auth-divider">или быстрый вход</div>
-        <div class="auth-provider-row">
-          <button type="button" class="auth-provider-btn" onclick="handleGoogleLogin()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 15.65 5 12c0-3.65 3.36-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"/>
-            </svg>
-            <span>Войти через Google</span>
-          </button>
-          ${tgUser && tgUser.id ? `
+        ${tgUser && tgUser.id ? `
+          <div class="auth-divider">или быстрый вход</div>
+          <div class="auth-provider-row">
             <button type="button" class="auth-provider-btn" onclick="handleTelegramQuickLogin()">
               <span>Войти как @${tgUser.username || tgUser.first_name || ('ID ' + tgUser.id)} (Telegram)</span>
             </button>
-          ` : ''}
-        </div>
+          </div>
+        ` : ''}
       `;
     }
 
     function renderAccountUI() {
+      const totalWardrobeCount =
+        (wardrobeByCategory.head?.length || 0) +
+        (wardrobeByCategory.upper?.length || 0) +
+        (wardrobeByCategory.lower?.length || 0) +
+        (wardrobeByCategory.shoes?.length || 0);
+
       // 1. Banner on Wardrobe Screen
       const bannerEl = document.getElementById('wardrobeAccountBanner');
       if (bannerEl) {
@@ -3520,12 +3659,12 @@
                 <div class="account-banner-info">
                   <div class="account-banner-title">${currentAccount.label || currentAccount.email}</div>
                   <div class="account-banner-sub">
-                    <span class="sync-dot"></span>
-                    <span>Синхронизировано в облаке (${outfitLogs.length} зап.)</span>
+                    <span class="sync-dot ${isCloudConnected ? '' : 'guest'}"></span>
+                    <span>${cloudSyncStatusText} · Записей: ${outfitLogs.length}</span>
                   </div>
                 </div>
               </div>
-              <button type="button" class="account-banner-btn secondary" onclick="handleLogoutAccount()">Сменить</button>
+              <button type="button" class="account-banner-btn secondary" onclick="handleManualCloudSync()" title="Обновить данные из облака">↻ Облако</button>
             </div>
           `;
         } else {
@@ -3534,10 +3673,10 @@
               <div class="account-banner-left">
                 <div class="account-avatar">☁</div>
                 <div class="account-banner-info">
-                  <div class="account-banner-title">Гостевой режим (только это устройство)</div>
+                  <div class="account-banner-title">Гостевой режим (без синхронизации)</div>
                   <div class="account-banner-sub">
                     <span class="sync-dot guest"></span>
-                    <span>Войдите, чтобы сохранять записи на всех устройствах</span>
+                    <span>Войдите в аккаунт для синхронизации между устройствами</span>
                   </div>
                 </div>
               </div>
@@ -3555,30 +3694,35 @@
           settingsCardEl.innerHTML = `
             <div class="settings-card-title">Личный аккаунт · Облако</div>
             <div class="settings-card-desc">
-              Ваш гардероб, история одежды и цвет интерфейса автоматически синхронизируются между всеми вашими устройствами.
+              Войдите под этим же Email и паролем на другом телефоне или ПК — ваши вещи (${totalWardrobeCount} шт.) и записи погоды (${outfitLogs.length} шт.) автоматически синхронизируются.
             </div>
-            <div class="account-status-banner" style="margin-bottom:10px;">
+            <div class="account-status-banner">
               <div class="account-banner-left">
                 <div class="account-avatar">${initial}</div>
                 <div class="account-banner-info">
                   <div class="account-banner-title">${currentAccount.label || currentAccount.email}</div>
                   <div class="account-banner-sub">
-                    <span class="sync-dot"></span>
-                    <span>Синхронизация активна · Записей: ${outfitLogs.length}</span>
+                    <span class="sync-dot ${isCloudConnected ? '' : 'guest'}"></span>
+                    <span>${cloudSyncStatusText}</span>
                   </div>
                 </div>
               </div>
               <button type="button" class="account-banner-btn secondary" onclick="handleLogoutAccount()">Выйти</button>
             </div>
+            <div class="sync-actions-row">
+              <button type="button" class="sync-action-btn primary" onclick="handleManualCloudSync()">
+                <span>🔄 Синхронизировать сейчас</span>
+              </button>
+            </div>
             <div class="user-uid-box">
-              ID пользователя: <strong>${currentAccount.uid || currentAccount.key}</strong>
+              Ключ синхронизации аккаунта: <strong>${currentAccount.cloudDocId}</strong>
             </div>
           `;
         } else {
           settingsCardEl.innerHTML = `
             <div class="settings-card-title">Аккаунт и синхронизация</div>
             <div class="settings-card-desc">
-              Создайте свой аккаунт или войдите, чтобы ваши вещи и записи о погоде были доступны с телефона, планшета или компьютера. У каждого пользователя — свой отдельный гардероб.
+              Введите одинаковый Email и пароль на своих устройствах, чтобы ваш гардероб и дневник погоды мгновенно синхронизировались через облако.
             </div>
             ${buildAuthFormHtml('settings_auth')}
           `;
@@ -3622,12 +3766,7 @@
       getAuth,
       signInAnonymously,
       signInWithCustomToken,
-      onAuthStateChanged,
-      createUserWithEmailAndPassword,
-      signInWithEmailAndPassword,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut
+      onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import {
       getFirestore,
@@ -3642,8 +3781,9 @@
     let auth = null;
     let firebaseUser = null;
     let unsubscribeProfileSnapshot = null;
+    let isApplyingRemoteSnapshot = false;
 
-    // Simple deterministic hash for password verification in shared cloud profile docs
+    // Deterministic SHA-256 hash so the same Email + Password produces the EXACT same cloud document ID on every device
     async function sha256Hex(text) {
       const msgBuffer = new TextEncoder().encode(text);
       const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
@@ -3651,211 +3791,301 @@
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
-    function getAccountDocRef(accKey) {
-      // RULE 1 Strict Path: /artifacts/{appId}/public/data/atmo_accounts/{accKey}
-      return doc(db, 'artifacts', appId, 'public', 'data', 'atmo_accounts', accKey);
+    function getAccountDocRef(cloudDocId) {
+      // RULE 1 Strict Path: /artifacts/{appId}/public/data/atmo_accounts/{cloudDocId}
+      return doc(db, 'artifacts', appId, 'public', 'data', 'atmo_accounts', cloudDocId);
     }
 
-    function subscribeToCloudAccount(accKey) {
+    function formatSyncTime() {
+      return new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    async function ensureFirebaseConnected() {
+      if (firebaseUser && db) return true;
+      if (!auth) return false;
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          const cred = await signInWithCustomToken(auth, __initial_auth_token);
+          firebaseUser = cred.user;
+        } else {
+          const cred = await signInAnonymously(auth);
+          firebaseUser = cred.user;
+        }
+        return Boolean(firebaseUser && db);
+      } catch (e) {
+        console.warn('Auth connection error:', e);
+        return false;
+      }
+    }
+
+    function subscribeToCloudAccount(cloudDocId) {
       if (unsubscribeProfileSnapshot) {
         unsubscribeProfileSnapshot();
         unsubscribeProfileSnapshot = null;
       }
-      if (!db || !firebaseUser || !accKey) return;
+      if (!db || !firebaseUser || !cloudDocId) return;
 
-      const ref = getAccountDocRef(accKey);
+      const ref = getAccountDocRef(cloudDocId);
       unsubscribeProfileSnapshot = onSnapshot(
         ref,
         (snap) => {
+          isCloudConnected = true;
           if (snap.exists()) {
-            const data = snap.data();
-            applyProfilePayload(data);
+            const cloudData = snap.data();
+            isApplyingRemoteSnapshot = true;
             try {
-              localStorage.setItem(getLocalProfileCacheKey(accKey), JSON.stringify(data));
-            } catch (_) {}
+              const merged = mergeCloudAndLocalPayloads(cloudData, buildCurrentProfilePayload());
+              applyProfilePayload(merged, true);
+              localStorage.setItem(getLocalProfileCacheKey(cloudDocId), JSON.stringify(merged));
+              cloudSyncStatusText = `Облако синхр. в ${formatSyncTime()}`;
+            } finally {
+              isApplyingRemoteSnapshot = false;
+            }
+            renderAccountUI();
           }
         },
         (err) => {
-          console.warn('Cloud sync listener warning:', err);
+          console.warn('Cloud sync listener error:', err);
+          isCloudConnected = false;
+          cloudSyncStatusText = 'Ошибка доступа к облаку';
+          renderAccountUI();
         }
       );
     }
 
-    async function pushAccountData(accKey, payload) {
-      if (!db || !firebaseUser || !accKey) return;
+    async function pushAccountData(cloudDocId, payload) {
+      if (isApplyingRemoteSnapshot) return;
+      const ready = await ensureFirebaseConnected();
+      if (!ready || !cloudDocId) {
+        isCloudConnected = false;
+        cloudSyncStatusText = 'Сохранено локально (ожидание сети)';
+        renderAccountUI();
+        return;
+      }
       try {
-        const ref = getAccountDocRef(accKey);
+        cloudSyncStatusText = 'Синхронизация...';
+        renderAccountUI();
+        const ref = getAccountDocRef(cloudDocId);
         await setDoc(ref, {
           ...payload,
+          email: currentAccount?.email || '',
+          label: currentAccount?.label || '',
           ownerUid: firebaseUser.uid,
           updatedAt: Date.now()
         }, { merge: true });
+        isCloudConnected = true;
+        cloudSyncStatusText = `Облако синхр. в ${formatSyncTime()}`;
+        renderAccountUI();
       } catch (err) {
         console.warn('Cloud push error:', err);
+        isCloudConnected = false;
+        cloudSyncStatusText = 'Ошибка отправки в облако';
+        renderAccountUI();
       }
     }
 
-    async function activateUserSession(accountObj, initialData) {
-      currentAccount = accountObj;
-      try {
-        localStorage.setItem('atmo_active_account_v3', JSON.stringify(accountObj));
-      } catch (_) {}
-
-      if (initialData) {
-        applyProfilePayload(initialData);
-      } else {
-        // Check local cache for this account first
-        try {
-          const cached = localStorage.getItem(getLocalProfileCacheKey(accountObj.key));
-          if (cached) applyProfilePayload(JSON.parse(cached));
-        } catch (_) {}
+    async function forceSyncNow(cloudDocId) {
+      const ready = await ensureFirebaseConnected();
+      if (!ready || !cloudDocId) {
+        showToast('Нет соединения с облачным сервером');
+        return;
       }
+      try {
+        cloudSyncStatusText = 'Загрузка из облака...';
+        renderAccountUI();
+        const ref = getAccountDocRef(cloudDocId);
+        const snap = await getDoc(ref);
+        const localPayload = buildCurrentProfilePayload();
 
-      subscribeToCloudAccount(accountObj.key);
-      closeAuthModal();
-      renderAccountUI();
-      render();
+        if (snap.exists()) {
+          const cloudData = snap.data();
+          const merged = mergeCloudAndLocalPayloads(cloudData, localPayload);
+          isApplyingRemoteSnapshot = true;
+          applyProfilePayload(merged, true);
+          isApplyingRemoteSnapshot = false;
+
+          await setDoc(ref, {
+            ...buildCurrentProfilePayload(),
+            email: currentAccount?.email || '',
+            label: currentAccount?.label || '',
+            ownerUid: firebaseUser.uid,
+            updatedAt: Date.now()
+          }, { merge: true });
+        } else {
+          await setDoc(ref, {
+            ...localPayload,
+            email: currentAccount?.email || '',
+            label: currentAccount?.label || '',
+            ownerUid: firebaseUser.uid,
+            updatedAt: Date.now()
+          }, { merge: true });
+        }
+
+        isCloudConnected = true;
+        cloudSyncStatusText = `Облако синхр. в ${formatSyncTime()}`;
+        renderAccountUI();
+        showToast('Данные успешно синхронизированы с облаком!');
+      } catch (e) {
+        console.warn('Force sync error:', e);
+        showToast('Не удалось обновить данные из облака');
+      }
     }
 
     async function authenticateAccount(email, password, mode) {
-      const accKey = 'acct_' + sanitizeAccountKey(email);
-      const passHash = await sha256Hex(email + '::' + password);
+      const cleanEmail = email.trim().toLowerCase();
+      const passHash = await sha256Hex(cleanEmail + '::' + password.trim());
+      // Deterministic document key derived from email + password hash so both devices hit the exact same document
+      const cloudDocId = 'usr_' + sanitizeAccountKey(cleanEmail) + '_' + passHash.slice(0, 16);
+      // Also check legacy key by email only to verify wrong password or migrate existing user
+      const emailLookupId = 'acct_' + sanitizeAccountKey(cleanEmail);
 
-      if (db && firebaseUser) {
+      const ready = await ensureFirebaseConnected();
+
+      if (ready) {
         try {
-          const ref = getAccountDocRef(accKey);
-          const snap = await getDoc(ref);
+          const lookupRef = getAccountDocRef(emailLookupId);
+          const lookupSnap = await getDoc(lookupRef);
 
-          if (mode === 'register') {
-            if (snap.exists() && snap.data().passHash && snap.data().passHash !== passHash) {
-              showToast('Этот Email уже зарегистрирован. Переключитесь на «Вход».');
-              setAuthMode('login');
+          if (lookupSnap.exists()) {
+            const existingMeta = lookupSnap.data();
+            if (existingMeta.passHash && existingMeta.passHash !== passHash) {
+              showToast('Неверный пароль для этого Email');
               return;
             }
-            const initialPayload = buildCurrentProfilePayload();
-            const fullDoc = {
-              ...initialPayload,
-              email,
-              passHash,
-              ownerUid: firebaseUser.uid,
-              createdAt: Date.now()
-            };
-            await setDoc(ref, fullDoc, { merge: true });
-            await activateUserSession({
-              key: accKey,
-              email,
-              label: email,
-              uid: firebaseUser.uid,
-              provider: 'email'
-            }, fullDoc);
-            showToast('Аккаунт создан и синхронизирован в облаке!');
-            return;
-          } else {
-            // Login mode
-            if (!snap.exists()) {
-              showToast('Аккаунт не найден. Нажмите «Регистрация», чтобы создать.');
-              setAuthMode('register');
-              return;
+          } else if (mode === 'login') {
+            // Check if document exists directly under cloudDocId
+            const directSnap = await getDoc(getAccountDocRef(cloudDocId));
+            if (!directSnap.exists()) {
+              // Automatically create & sync if logging in for the first time so the user never gets stuck
+              console.log('Creating new cloud profile for', cleanEmail);
             }
-            const cloudData = snap.data();
-            if (cloudData.passHash && cloudData.passHash !== passHash) {
-              showToast('Неверный пароль для этого аккаунта');
-              return;
-            }
-            await activateUserSession({
-              key: accKey,
-              email,
-              label: email,
-              uid: firebaseUser.uid,
-              provider: 'email'
-            }, cloudData);
-            showToast('Вход выполнен! Ваши записи загружены из облака.');
-            return;
           }
-        } catch (err) {
-          console.warn('Cloud auth error, using local fallback:', err);
-        }
-      }
 
-      // Offline / local fallback if Firebase config is not present
-      const cachedRaw = localStorage.getItem(getLocalProfileCacheKey(accKey));
-      if (mode === 'login' && cachedRaw) {
-        const cachedData = JSON.parse(cachedRaw);
-        if (cachedData.passHash && cachedData.passHash !== passHash) {
-          showToast('Неверный пароль');
+          const docRef = getAccountDocRef(cloudDocId);
+          const docSnap = await getDoc(docRef);
+
+          // Also check if user had data in legacy emailLookupId from previous version
+          const cloudSourceData = docSnap.exists()
+            ? docSnap.data()
+            : (lookupSnap.exists() ? lookupSnap.data() : null);
+
+          const localPayload = buildCurrentProfilePayload();
+          const mergedPayload = cloudSourceData
+            ? mergeCloudAndLocalPayloads(cloudSourceData, localPayload)
+            : localPayload;
+
+          isApplyingRemoteSnapshot = true;
+          applyProfilePayload(mergedPayload, true);
+          isApplyingRemoteSnapshot = false;
+
+          const toSave = {
+            ...buildCurrentProfilePayload(),
+            email: cleanEmail,
+            label: cleanEmail,
+            passHash,
+            cloudDocId,
+            ownerUid: firebaseUser.uid,
+            updatedAt: Date.now()
+          };
+
+          // Write to both deterministic doc and email lookup doc so any device finds it immediately
+          await setDoc(docRef, toSave, { merge: true });
+          await setDoc(lookupRef, toSave, { merge: true });
+
+          currentAccount = {
+            key: cloudDocId,
+            cloudDocId,
+            email: cleanEmail,
+            label: cleanEmail,
+            uid: firebaseUser.uid,
+            provider: 'email'
+          };
+
+          localStorage.setItem('atmo_active_account_v3', JSON.stringify(currentAccount));
+          localStorage.setItem(getLocalProfileCacheKey(cloudDocId), JSON.stringify(toSave));
+
+          isCloudConnected = true;
+          cloudSyncStatusText = `Облако синхр. в ${formatSyncTime()}`;
+          subscribeToCloudAccount(cloudDocId);
+          closeAuthModal();
+          renderAccountUI();
+          render();
+          showToast(`Синхронизировано! Загружено записей: ${outfitLogs.length}`);
           return;
-        }
-        await activateUserSession({ key: accKey, email, label: email, uid: accKey, provider: 'email' }, cachedData);
-        showToast('Вход выполнен!');
-      } else {
-        const payload = { ...buildCurrentProfilePayload(), email, passHash };
-        localStorage.setItem(getLocalProfileCacheKey(accKey), JSON.stringify(payload));
-        await activateUserSession({ key: accKey, email, label: email, uid: accKey, provider: 'email' }, payload);
-        showToast('Аккаунт сохранён!');
-      }
-    }
-
-    async function signInGoogleAccount() {
-      if (auth) {
-        try {
-          const provider = new GoogleAuthProvider();
-          const res = await signInWithPopup(auth, provider);
-          if (res && res.user) {
-            firebaseUser = res.user;
-            const email = res.user.email || ('google_' + res.user.uid);
-            const accKey = 'google_' + sanitizeAccountKey(email);
-            let cloudData = null;
-            if (db) {
-              const snap = await getDoc(getAccountDocRef(accKey));
-              if (snap.exists()) {
-                cloudData = snap.data();
-              } else {
-                cloudData = buildCurrentProfilePayload();
-                await setDoc(getAccountDocRef(accKey), { ...cloudData, email, ownerUid: res.user.uid }, { merge: true });
-              }
-            }
-            await activateUserSession({
-              key: accKey,
-              email,
-              label: res.user.displayName || email,
-              uid: res.user.uid,
-              provider: 'google'
-            }, cloudData);
-            showToast('Вход через Google выполнен!');
-            return;
-          }
         } catch (err) {
-          showToast('Вход через всплывающее окно недоступен в этом окне, используйте Email и пароль');
+          console.warn('Cloud auth error:', err);
         }
-      } else {
-        showToast('Используйте вход по Email и паролю');
       }
+
+      // Fallback if offline
+      currentAccount = {
+        key: cloudDocId,
+        cloudDocId,
+        email: cleanEmail,
+        label: cleanEmail,
+        uid: cloudDocId,
+        provider: 'email'
+      };
+      localStorage.setItem('atmo_active_account_v3', JSON.stringify(currentAccount));
+      const cachedRaw = localStorage.getItem(getLocalProfileCacheKey(cloudDocId));
+      if (cachedRaw) {
+        applyProfilePayload(JSON.parse(cachedRaw), true);
+      }
+      isCloudConnected = false;
+      cloudSyncStatusText = 'Локальный режим (нет связи с облаком)';
+      closeAuthModal();
+      renderAccountUI();
+      render();
+      showToast('Вход выполнен (локальный режим)');
     }
 
     async function signInTelegramAccount(tgUser) {
       if (!tgUser || !tgUser.id) return;
-      const accKey = 'tg_' + sanitizeAccountKey(tgUser.id);
+      const cloudDocId = 'tg_user_' + sanitizeAccountKey(tgUser.id);
       const label = tgUser.username ? ('@' + tgUser.username) : (tgUser.first_name || ('Telegram #' + tgUser.id));
-      let cloudData = null;
-      if (db && firebaseUser) {
+
+      const ready = await ensureFirebaseConnected();
+      if (ready) {
         try {
-          const snap = await getDoc(getAccountDocRef(accKey));
-          if (snap.exists()) {
-            cloudData = snap.data();
-          } else {
-            cloudData = buildCurrentProfilePayload();
-            await setDoc(getAccountDocRef(accKey), { ...cloudData, label, ownerUid: firebaseUser.uid }, { merge: true });
-          }
+          const ref = getAccountDocRef(cloudDocId);
+          const snap = await getDoc(ref);
+          const localPayload = buildCurrentProfilePayload();
+          const merged = snap.exists()
+            ? mergeCloudAndLocalPayloads(snap.data(), localPayload)
+            : localPayload;
+
+          isApplyingRemoteSnapshot = true;
+          applyProfilePayload(merged, true);
+          isApplyingRemoteSnapshot = false;
+
+          await setDoc(ref, {
+            ...buildCurrentProfilePayload(),
+            email: label,
+            label,
+            cloudDocId,
+            ownerUid: firebaseUser.uid,
+            updatedAt: Date.now()
+          }, { merge: true });
+
+          isCloudConnected = true;
+          cloudSyncStatusText = `Облако синхр. в ${formatSyncTime()}`;
         } catch (_) {}
       }
-      await activateUserSession({
-        key: accKey,
+
+      currentAccount = {
+        key: cloudDocId,
+        cloudDocId,
         email: label,
         label,
-        uid: firebaseUser?.uid || accKey,
+        uid: firebaseUser?.uid || cloudDocId,
         provider: 'telegram'
-      }, cloudData);
-      showToast('Синхронизация с аккаунтом Telegram включена!');
+      };
+      localStorage.setItem('atmo_active_account_v3', JSON.stringify(currentAccount));
+      subscribeToCloudAccount(cloudDocId);
+      closeAuthModal();
+      renderAccountUI();
+      render();
+      showToast('Синхронизация через Telegram активна!');
     }
 
     async function logoutAccount() {
@@ -3864,25 +4094,30 @@
         unsubscribeProfileSnapshot = null;
       }
       currentAccount = null;
+      isCloudConnected = false;
+      cloudSyncStatusText = 'Гостевой режим';
+
       try {
         localStorage.removeItem('atmo_active_account_v3');
+        localStorage.removeItem('atmo_user_wardrobe_v2');
+        localStorage.removeItem('atmo_user_logs_v2');
+        localStorage.removeItem('atmo_deleted_tombstones_v3');
       } catch (_) {}
 
-      // Reset to clean state for guest so previous user's private wardrobe isn't left behind
+      deletedTombstones.clear();
       wardrobeByCategory = { head: [], upper: [], lower: [], shoes: [] };
       outfitLogs = [];
       draftTodayOutfit = { head: '', upper: '', lower: '', shoes: '' };
 
       renderAccountUI();
       render();
-      showToast('Вы вышли из аккаунта');
+      showToast('Вы вышли из аккаунта. Личные данные скрыты.');
     }
 
-    // Expose cloud bridge to main application script
     cloudBridge = {
       pushAccountData,
+      forceSyncNow,
       authenticateAccount,
-      signInGoogleAccount,
       signInTelegramAccount,
       logoutAccount
     };
@@ -3895,28 +4130,21 @@
           auth = getAuth(app);
           db = getFirestore(app);
 
-          // RULE 3: Auth Before Queries
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await signInWithCustomToken(auth, __initial_auth_token);
-          } else {
-            await signInAnonymously(auth);
-          }
+          await ensureFirebaseConnected();
 
           onAuthStateChanged(auth, async (user) => {
             firebaseUser = user;
             if (!user) return;
 
-            // Restore previously logged-in account on this device or auto-link Telegram user
             try {
               const savedAccRaw = localStorage.getItem('atmo_active_account_v3');
               if (savedAccRaw) {
                 const savedAcc = JSON.parse(savedAccRaw);
-                if (savedAcc && savedAcc.key) {
-                  const snap = await getDoc(getAccountDocRef(savedAcc.key));
-                  await activateUserSession(
-                    { ...savedAcc, uid: user.uid },
-                    snap.exists() ? snap.data() : null
-                  );
+                const docKey = savedAcc?.cloudDocId || savedAcc?.key;
+                if (docKey) {
+                  currentAccount = { ...savedAcc, cloudDocId: docKey, uid: user.uid };
+                  await forceSyncNow(docKey);
+                  subscribeToCloudAccount(docKey);
                   return;
                 }
               }
@@ -3928,12 +4156,13 @@
             }
           });
         } else {
-          // Restore local account session if offline
           const savedAccRaw = localStorage.getItem('atmo_active_account_v3');
           if (savedAccRaw) {
             const savedAcc = JSON.parse(savedAccRaw);
-            if (savedAcc && savedAcc.key) {
-              await activateUserSession(savedAcc, null);
+            if (savedAcc && (savedAcc.cloudDocId || savedAcc.key)) {
+              currentAccount = savedAcc;
+              cloudSyncStatusText = 'Локальный профиль активен';
+              renderAccountUI();
             }
           }
         }
