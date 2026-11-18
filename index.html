@@ -782,6 +782,13 @@
     .is-night .sky-cloud{background:radial-gradient(ellipse at center,rgba(120,130,170,.22),transparent 70%)}
     .k-rain .sky-cloud{background:radial-gradient(ellipse at center,rgba(120,135,160,.42),transparent 70%)}
     .drop{position:absolute;top:-18px;width:1.5px;height:16px;border-radius:2px;background:linear-gradient(180deg,transparent,rgba(140,185,235,.75));animation:fall linear infinite}
+    .is-day.k-snow{background:linear-gradient(180deg,rgba(190,210,235,.28) 0%,rgba(150,175,210,.08) 55%,transparent 80%)}
+    .k-snow .sky-sun{opacity:.25;animation:none}
+    .k-snow .sky-stars{opacity:.25;animation:none}
+    .k-snow .sky-moon{opacity:.4}
+    .k-snow .sky-cloud{background:radial-gradient(ellipse at center,rgba(215,225,240,.38),transparent 70%)}
+    .flake{position:absolute;top:-8px;border-radius:50%;background:#fff;opacity:.85;animation:snowfall linear infinite}
+    @keyframes snowfall{0%{transform:translate(0,0)}50%{transform:translate(14px,170px)}100%{transform:translate(-6px,340px)}}
     @keyframes fall{to{transform:translateY(340px)}}
     @keyframes drift{to{transform:translateX(64px)}}
     @keyframes breathe{50%{transform:scale(1.12);opacity:.8}}
@@ -1245,6 +1252,12 @@
       let h = `<div class="hero-sky ${night ? 'is-night' : 'is-day'} k-${kind}">`;
       h += night ? '<div class="sky-stars"></div><div class="sky-moon"></div>' : '<div class="sky-sun"></div>';
       if (kind !== 'clear') h += '<div class="sky-cloud c1"></div><div class="sky-cloud c2"></div>';
+      if (kind === 'snow') {
+        for (let i = 0; i < 28; i++) {
+          const sz = 2 + (i * 7) % 3;
+          h += `<i class="flake" style="left:${(i * 31 + 7) % 100}%;width:${sz}px;height:${sz}px;animation-duration:${(5 + (i * 11) % 5).toFixed(1)}s;animation-delay:-${((i * 17) % 50) / 10}s"></i>`;
+        }
+      }
       if (kind === 'rain') {
         for (let i = 0; i < 22; i++) {
           h += `<i class="drop" style="left:${(i * 37 + 11) % 100}%;animation-duration:${(0.8 + ((i * 13) % 7) / 10).toFixed(1)}s;animation-delay:-${((i * 29) % 10) / 10}s"></i>`;
@@ -1307,7 +1320,15 @@
       return rounded + '°';
     }
 
-    function getWeatherSvg(rainProb) {
+    function isSnowy(st) { return st.currentNow <= 0.5; }
+    function snowDay(d) { return d.avgMax <= 0.5; }
+    function getWeatherSvg(rainProb, snowy = false) {
+      if (rainProb >= 55 && snowy) {
+        return `<svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+          <path d="M8.5 19.2H19.5C22 19.2 24 17.2 24 14.7C24 12.4 22.2 10.5 20 10.3C19.3 7.5 16.8 5.4 13.7 5.4C10.2 5.4 7.3 8.2 7.3 11.8C7.3 12 7.3 12.2 7.3 12.4C5.7 12.9 4.6 14.4 4.6 16.1C4.6 17.8 6 19.2 7.7 19.2H8.5Z" fill="#F2F2F7"/>
+          <circle cx="10" cy="22.6" r="1.6" fill="#cfe3f7"/><circle cx="14" cy="24.4" r="1.6" fill="#cfe3f7"/><circle cx="18" cy="22.6" r="1.6" fill="#cfe3f7"/>
+        </svg>`;
+      }
       if (rainProb >= 55) {
         return `<svg width="26" height="26" viewBox="0 0 28 28" fill="none">
           <path d="M8.5 19.2H19.5C22 19.2 24 17.2 24 14.7C24 12.4 22.2 10.5 20 10.3C19.3 7.5 16.8 5.4 13.7 5.4C10.2 5.4 7.3 8.2 7.3 11.8C7.3 12 7.3 12.2 7.3 12.4C5.7 12.9 4.6 14.4 4.6 16.1C4.6 17.8 6 19.2 7.7 19.2H8.5Z" fill="#F2F2F7"/>
@@ -1335,8 +1356,8 @@
       </svg>`;
     }
 
-    function getConditionTitle(rainProb) {
-      if (rainProb >= 60) return 'Дождь · Осадки';
+    function getConditionTitle(rainProb, snowy = false) {
+      if (rainProb >= 60) return snowy ? 'Снег · Осадки' : 'Дождь · Осадки';
       if (rainProb >= 35) return 'Преимущественно облачно';
       if (rainProb >= 20) return 'Переменная облачность';
       return 'Ясно · Малооблачно';
@@ -1441,7 +1462,8 @@
       };
     }
 
-    function getRainCountdown(city, rainTimeline) {
+    function getRainCountdown(city, rainTimeline, snowy = false) {
+      const W = snowy ? { go: 'Идёт снег', exp: 'Снег ожидается', no: 'снега', none: 'Без снега' } : { go: 'Идёт дождь', exp: 'Дождь ожидается', no: 'дождя', none: 'Без дождя' };
       const nowMins = getCityNowMinutes(city.utcOffset);
       const currentHourIdx = Math.floor(nowMins / 60);
 
@@ -1449,7 +1471,7 @@
         return {
           title: 'Без осадков впереди',
           shortLabel: 'Без осадков',
-          mainText: 'В ближайшие 48 часов дождя не ожидается',
+          mainText: `В ближайшие 48 часов ${W.no} не ожидается`,
           active: false
         };
       }
@@ -1466,8 +1488,8 @@
         const minsLeftInHour = 60 - (nowMins % 60);
         const totalMinsToStop = Math.max(5, (stopOffsetHours - 1) * 60 + minsLeftInHour);
         return {
-          title: `Идёт дождь (${nowEntry.prob}%)`,
-          shortLabel: `Идёт дождь (${nowEntry.prob}%)`,
+          title: `${W.go} (${nowEntry.prob}%)`,
+          shortLabel: `${W.go} (${nowEntry.prob}%)`,
           mainText: `Прекратится ${formatCountdownDetailed(totalMinsToStop)} · ~${nowEntry.mm.toFixed(1)} мм/ч`,
           active: true
         };
@@ -1489,8 +1511,8 @@
         const targetHHMM = minsToHHMM(targetClockMins);
         const rainItem = rainTimeline[nextRainIdx];
         return {
-          title: `Дождь ожидается в ${targetHHMM}`,
-          shortLabel: `Дождь ожидается в ${targetHHMM}`,
+          title: `${W.exp} в ${targetHHMM}`,
+          shortLabel: `${W.exp} в ${targetHHMM}`,
           mainText: `Начнется ${formatCountdownDetailed(totalMinsUntilRain)} · вероятность ${rainItem.prob}%`,
           active: true
         };
@@ -1498,8 +1520,8 @@
 
       return {
         title: 'Без осадков впереди',
-        shortLabel: `Без дождя (макс. ${maxProb48h}%)`,
-        mainText: `В ближайшие 48 ч дождя не ожидается (макс. вер. ${maxProb48h}%)`,
+        shortLabel: `${W.none} (макс. ${maxProb48h}%)`,
+        mainText: `В ближайшие 48 ч ${W.no} не ожидается (макс. вер. ${maxProb48h}%)`,
         active: false
       };
     }
@@ -1700,7 +1722,7 @@
       // Render Main Selected City View (Hero + Atmo Details, NO Radar block)
       const state = weatherMap[activeCity.id] || buildSeedWeatherForCity(activeCity);
       const sun = getSunCountdowns(activeCity, state.apiSunData);
-      const rainInfo = getRainCountdown(activeCity, state.rainTimeline);
+      const rainInfo = getRainCountdown(activeCity, state.rainTimeline, isSnowy(state));
       const d0 = state.days[0];
       const d1 = state.days[1];
       const d2 = state.days[2];
@@ -1710,14 +1732,14 @@
         <!-- Hero Card -->
         <section class="hero-card">
           <div class="hero-clouds-bg"></div>
-          ${skyHTML(sun.isSunriseNext, (rainInfo.title.startsWith('Идёт') || d0.avgRain >= 60) ? 'rain' : d0.avgRain >= 20 ? 'cloud' : 'clear')}
+          ${skyHTML(sun.isSunriseNext, (rainInfo.title.startsWith('Идёт') || d0.avgRain >= 60) ? (isSnowy(state) ? 'snow' : 'rain') : d0.avgRain >= 20 ? 'cloud' : 'clear')}
           <div class="hero-top">
             <div class="hero-degree">${formatHeroNumber(state.currentNow)}</div>
-            <div class="hero-condition">${getConditionTitle(d0.avgRain)}</div>
+            <div class="hero-condition">${getConditionTitle(d0.avgRain, isSnowy(state))}</div>
             <div class="hero-hl-line">
               <span>Днем:${formatSignedTemp(d0.avgMax)}</span>
               <span>Ночью:${formatSignedTemp(d0.avgMin)}</span>
-              <span>· Дождь ${d0.avgRain}%</span>
+              <span>· ${isSnowy(state) ? 'Снег' : 'Дождь'} ${d0.avgRain}%</span>
               ${state.wind != null ? `<span>· Ветер ${fmtWind(state.wind)}</span>` : ''}
             </div>
             <div class="hero-diff-pill">${d0.comparison.text}</div>
@@ -1726,25 +1748,25 @@
           <div class="hero-strip">
             <div class="strip-item active">
               <span class="strip-label">Сейчас</span>
-              <div class="strip-svg">${getWeatherSvg(d0.avgRain)}</div>
+              <div class="strip-svg">${getWeatherSvg(d0.avgRain, isSnowy(state))}</div>
               <span class="strip-t">${formatPlainTemp(state.currentNow)}</span>
               <span class="strip-p">${d0.avgRain}%</span>
             </div>
             <div class="strip-item">
               <span class="strip-label">Сегодня</span>
-              <div class="strip-svg">${getWeatherSvg(d0.avgRain)}</div>
+              <div class="strip-svg">${getWeatherSvg(d0.avgRain, snowDay(d0))}</div>
               <span class="strip-t">${formatSignedTemp(d0.avgMax)}</span>
               <span class="strip-p">${d0.avgRain}%</span>
             </div>
             <div class="strip-item">
               <span class="strip-label">Завтра</span>
-              <div class="strip-svg">${getWeatherSvg(d1.avgRain)}</div>
+              <div class="strip-svg">${getWeatherSvg(d1.avgRain, snowDay(d1))}</div>
               <span class="strip-t">${formatSignedTemp(d1.avgMax)}</span>
               <span class="strip-p">${d1.avgRain}%</span>
             </div>
             <div class="strip-item">
               <span class="strip-label">Послезав.</span>
-              <div class="strip-svg">${getWeatherSvg(d2.avgRain)}</div>
+              <div class="strip-svg">${getWeatherSvg(d2.avgRain, snowDay(d2))}</div>
               <span class="strip-t">${formatSignedTemp(d2.avgMax)}</span>
               <span class="strip-p">${d2.avgRain}%</span>
             </div>
@@ -1824,7 +1846,7 @@
           ${state.days.map(day => `
             <div class="detail-row">
               <div class="detail-left">
-                <span class="detail-icon">${getWeatherSvg(day.avgRain)}</span>
+                <span class="detail-icon">${getWeatherSvg(day.avgRain, snowDay(day))}</span>
                 <div class="detail-text-group">
                   <span class="detail-title">${day.label} · ${day.dateStr}</span>
                   <span class="detail-sub">${srcLine(day)}</span>
@@ -1871,7 +1893,7 @@
       listEl.innerHTML = filtered.map(c => {
         const st = weatherMap[c.id] || buildSeedWeatherForCity(c);
         const cSun = getSunCountdowns(c, st.apiSunData);
-        const cRain = getRainCountdown(c, st.rainTimeline);
+        const cRain = getRainCountdown(c, st.rainTimeline, isSnowy(st));
         const cDay0 = st.days[0];
         const isFav = favorites.has(c.id);
         const isSel = c.id === activeCity.id;
@@ -1886,7 +1908,7 @@
                 <span class="city-item-name">${c.name}</span>
               </div>
               <div class="city-item-meta">
-                ${c.country} · Дождь ${cDay0.avgRain}% · ${cDay0.comparison.text}
+                ${c.country} · ${isSnowy(st) ? 'Снег' : 'Дождь'} ${cDay0.avgRain}% · ${cDay0.comparison.text}
               </div>
               <div class="city-item-sun">
                 <span>Восход ${cSun.sunriseTime}</span>
@@ -1897,7 +1919,7 @@
               </div>
             </div>
             <div class="city-item-right">
-              <div>${getWeatherSvg(cDay0.avgRain)}</div>
+              <div>${getWeatherSvg(cDay0.avgRain, snowDay(cDay0))}</div>
               <div class="city-item-temp">${formatPlainTemp(st.currentNow)}</div>
             </div>
           </article>
@@ -1931,7 +1953,7 @@
       if (!state) return;
 
       const sun = getSunCountdowns(activeCity, state.apiSunData);
-      const rainInfo = getRainCountdown(activeCity, state.rainTimeline);
+      const rainInfo = getRainCountdown(activeCity, state.rainTimeline, isSnowy(state));
 
       const srEl = document.getElementById('activeSunriseTimer');
       const ssEl = document.getElementById('activeSunsetTimer');
