@@ -1193,15 +1193,19 @@
     /* ---- Вешалка: отдельный раздел ---- */
     let hPick = { head: [], top: [], bottom: [], shoes: [] }, hFeel = null, hInit = '';
     const fmtWind = v => v == null ? '—' : v.toFixed(1) + ' м/с';
-    const RANK = { ok: 0, cool: 1, warm: 1, cold: 2, hot: 2 };
+    const RANK = { ok: 0, warm: 1, cool: 2, hot: 3, cold: 4 };
     const todayEntry = () => wlog.find(e => e.date === getLocalIsoDate(0) && e.cityId === selectedCityId);
     const wSnap = st => { const d = st.days[0]; return { now: st.currentNow, max: d.avgMax, min: d.avgMin, rain: d.avgRain, wind: st.wind ?? null }; };
     const wDist = (a, b) => Math.abs(a.max - b.max) * .4 + Math.abs(a.min - b.min) * .3 + Math.abs(a.now - b.now) * .3
       + ((a.rain >= 50) !== (b.rain >= 50) ? 3 : Math.abs(a.rain - b.rain) / 40) + (a.wind != null && b.wind != null ? Math.abs(a.wind - b.wind) * .15 : 0);
     function bestRef(w) {
       const sim = wlog.filter(e => !(e.date === getLocalIsoDate(0) && e.cityId === selectedCityId))
-        .map(e => ({ e, d: wDist(w, e.w) })).filter(x => x.d <= 3).sort((a, b) => a.d - b.d).map(x => x.e);
-      return sim.reduce((b, e) => (!b || RANK[e.feel] < RANK[b.feel]) ? e : b, null);
+        .filter(e => e.w && Math.abs(w.now - e.w.now) <= 3)
+        .sort((a, b) => Math.abs(w.now - a.w.now) - Math.abs(w.now - b.w.now) || wDist(w, a.w) - wDist(w, b.w));
+        if (!sim.length) return null;
+      // сначала самая близкая температура, потом из записей этой температуры — самая комфортная
+      const grp = sim.filter(e => Math.abs(e.w.now - sim[0].w.now) <= 0.5);
+      return grp.reduce((b, e) => RANK[e.feel] < RANK[b.feel] ? e : b);
     }
     function figure(it, col) {
       const has = k => it && it[k] && it[k].length, f = `fill="${col}"`;
